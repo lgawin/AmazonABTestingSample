@@ -12,6 +12,7 @@ import com.amazon.insights.AmazonInsights;
 import com.amazon.insights.EventClient;
 import com.amazon.insights.InsightsCallback;
 import com.amazon.insights.InsightsCredentials;
+import com.amazon.insights.InsightsOptions;
 import com.amazon.insights.Variation;
 import com.amazon.insights.VariationSet;
 import com.amazon.insights.error.InsightsError;
@@ -27,6 +28,7 @@ public class HomeActivity extends Activity implements View.OnClickListener {
 
     private ABTestClient abClient;
     private EventClient eventClient;
+    private View button;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,12 +36,15 @@ public class HomeActivity extends Activity implements View.OnClickListener {
         setContentView(R.layout.activity_home);
 
         InsightsCredentials credentials = AmazonInsights.newCredentials(AMAZON_PUBLIC_KEY, AMAZON_PRIVATE_KEY);
-        AmazonInsights insightsInstance = AmazonInsights.newInstance(credentials, getApplicationContext());
+        InsightsOptions options = AmazonInsights.newOptions(true, true);
+        AmazonInsights insightsInstance = AmazonInsights.newInstance(credentials, getApplicationContext(), options);
 
         abClient = insightsInstance.getABTestClient();
         eventClient = insightsInstance.getEventClient();
 
-        findViewById(R.id.button).setOnClickListener(this);
+        button = findViewById(R.id.button);
+        button.setOnClickListener(this);
+        button.setVisibility(View.GONE);
 
         abClient.getVariations(AB_VARIATION).setCallback(new InsightsCallback<VariationSet>() {
             @Override
@@ -53,12 +58,26 @@ public class HomeActivity extends Activity implements View.OnClickListener {
                 if (!variation.getVariableAsBoolean("hasLabel", true)) {
                     findViewById(R.id.button_label).setVisibility(View.GONE);
                 }
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        button.setVisibility(View.VISIBLE);
+                    }
+                });
             }
 
             @Override
             public void onError(InsightsError error) {
                 super.onError(error);
                 Log.w(LOG_TAG, error.getMessage());
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        button.setVisibility(View.VISIBLE);
+                    }
+                });
             }
         });
     }
@@ -81,11 +100,7 @@ public class HomeActivity extends Activity implements View.OnClickListener {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
+        return item.getItemId() == R.id.action_settings || super.onOptionsItemSelected(item);
     }
 
     @Override
